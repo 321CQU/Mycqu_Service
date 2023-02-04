@@ -1,0 +1,22 @@
+version: '3'
+services:
+
+  notification_center:
+    container_name: 321cqu-mycqu-service
+    build: .
+    expose:
+      - "53211"
+    restart: always
+    volumes:
+      - /www/services/mycqu_service/config:/src/utils/config
+      - /www/services/_321CQU_package/python_package:/_321CQU_package
+    environment:
+      PYTHONPATH: /_321CQU_package
+    networks:
+      - persist
+
+networks:
+  persist:
+    external:
+      name: 321cqu
+
