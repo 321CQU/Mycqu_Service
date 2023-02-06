@@ -81,6 +81,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
                 temp['begin_date'] = _date2timestamp(session_info.begin_date)
             if session_info.end_date is not None:
                 temp['end_date'] = _date2timestamp(session_info.end_date)
+            res.append(temp)
         return ParseDict({'session_infos': res}, ms_rr.FetchAllSessionInfoResponse())
 
     async def FetchCourseTimetable(self, request: ms_rr.FetchCourseTimetableRequest, context):
@@ -90,6 +91,11 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             CQUSession.parse_obj(MessageToDict(
                 request.session, including_default_value_fields=True, preserving_proto_field_name=True
             )))
+        return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
+
+    async def FetchEnrollTimetable(self, request: ms_rr.FetchEnrollTimetableRequest, context):
+        client = await self.get_logined_client(request.base_login_info)
+        info = await CourseTimetable.async_fetch_enroll(client, request.code)
         return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
 
     async def FetchScore(self, request: ms_rr.FetchScoreRequest, context):

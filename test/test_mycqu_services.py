@@ -70,6 +70,16 @@ class MyTestCase(unittest.IsolatedAsyncioTestCase):
         print(res)
         self.assertIsInstance(res, ms_rr.FetchCourseTimetableResponse)
 
+    async def test_fetch_enroll_timetable(self):
+        res = await self.stub.FetchEnrollTimetable(
+            ms_rr.FetchEnrollTimetableRequest(
+                base_login_info=self.login_info,
+                code=self.sid,
+            )
+        )
+        print(res)
+        self.assertIsInstance(res, ms_rr.FetchCourseTimetableResponse)
+
     async def test_fetch_score(self):
         res = await self.stub.FetchScore(ms_rr.FetchScoreRequest(base_login_info=self.login_info, is_minor=False))
         print(res)
