@@ -11,6 +11,7 @@ from mycqu import User, EnrollCourseInfo, EnrollCourseItem, Exam, CQUSession, CQ
 from _321CQU.tools.protobufBridge import model2protobuf, model_list2protobuf
 
 from utils.ClientManager import MycquClient
+from utils.handleMycquError import handle_mycqu_error
 
 
 def _date2timestamp(_date: date) -> int:
@@ -25,11 +26,13 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
     async def get_logined_client(self, info: ms_rr.BaseLoginInfo) -> AsyncClient:
         return await self.client_manager.get_logined_client(info.auth, info.password)
 
+    @handle_mycqu_error
     async def FetchUser(self, request: ms_rr.BaseLoginInfo, context):
         client = await self.get_logined_client(request)
         info = await User.async_fetch_self(client)
         return model2protobuf(info, ms_m.UserInfo)
 
+    @handle_mycqu_error
     async def FetchEnrollCourseInfo(self, request: ms_rr.FetchEnrollCourseInfoRequest, context):
         client = await self.get_logined_client(request.base_login_info)
         info = await EnrollCourseInfo.async_fetch(client, request.is_major)
@@ -38,11 +41,13 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             res[key] = {'info': [i.dict() for i in value]}
         return ParseDict({'result': res}, ms_rr.FetchEnrollCourseInfoResponse())
 
+    @handle_mycqu_error
     async def FetchEnrollCourseItem(self, request: ms_rr.FetchEnrollCourseItemRequest, context):
         client = await self.get_logined_client(request.base_login_info)
         info = await EnrollCourseItem.async_fetch(client, request.id, request.is_major)
         return model_list2protobuf(info, 'enroll_course_items', ms_rr.FetchEnrollCourseItemResponse)
 
+    @handle_mycqu_error
     async def FetchExam(self, request: ms_rr.FetchExamRequest, context):
         client = await self.get_logined_client(request.base_login_info)
         info = await Exam.async_fetch(client, request.stu_id)
@@ -56,11 +61,13 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
 
         return ParseDict({'exams': res}, ms_rr.FetchExamResponse())
 
+    @handle_mycqu_error
     async def FetchAllSession(self, request: ms_rr.BaseLoginInfo, context):
         client = await self.get_logined_client(request)
         info = await CQUSession.async_fetch(client)
         return model_list2protobuf(info, 'sessions', ms_rr.FetchAllSessionResponse)
 
+    @handle_mycqu_error
     async def FetchCurrSessionInfo(self, request: ms_rr.BaseLoginInfo, context):
         client = await self.get_logined_client(request)
         info = await CQUSessionInfo.async_fetch(client)
@@ -71,6 +78,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             res['end_date'] = _date2timestamp(info.end_date)
         return ParseDict(res, ms_m.CquSessionInfo())
 
+    @handle_mycqu_error
     async def FetchAllSessionInfo(self, request: ms_rr.BaseLoginInfo, context):
         client = await self.get_logined_client(request)
         info = await CQUSessionInfo.async_fetch_all(client)
@@ -84,6 +92,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             res.append(temp)
         return ParseDict({'session_infos': res}, ms_rr.FetchAllSessionInfoResponse())
 
+    @handle_mycqu_error
     async def FetchCourseTimetable(self, request: ms_rr.FetchCourseTimetableRequest, context):
         client = await self.get_logined_client(request.base_login_info)
         info = await CourseTimetable.async_fetch(
@@ -93,16 +102,19 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             )))
         return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
 
+    @handle_mycqu_error
     async def FetchEnrollTimetable(self, request: ms_rr.FetchEnrollTimetableRequest, context):
         client = await self.get_logined_client(request.base_login_info)
         info = await CourseTimetable.async_fetch_enroll(client, request.code)
         return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
 
+    @handle_mycqu_error
     async def FetchScore(self, request: ms_rr.FetchScoreRequest, context):
         client = await self.get_logined_client(request.base_login_info)
         info = await Score.async_fetch(client, request.is_minor)
         return model_list2protobuf(info, 'scores', ms_rr.FetchScoreResponse)
 
+    @handle_mycqu_error
     async def FetchGpaRanking(self, request: ms_rr.BaseLoginInfo, context):
         client = await self.get_logined_client(request)
         info = await GpaRanking.async_fetch(client)
