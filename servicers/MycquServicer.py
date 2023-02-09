@@ -95,11 +95,14 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
     @handle_mycqu_error
     async def FetchCourseTimetable(self, request: ms_rr.FetchCourseTimetableRequest, context):
         client = await self.get_logined_client(request.base_login_info)
+        cqu_session = CQUSession.parse_obj(MessageToDict(
+            request.session, including_default_value_fields=True, preserving_proto_field_name=True
+        ))
+        if cqu_session.id == 0:
+            cqu_session.id = None
         info = await CourseTimetable.async_fetch(
             client, request.code,
-            CQUSession.parse_obj(MessageToDict(
-                request.session, including_default_value_fields=True, preserving_proto_field_name=True
-            )))
+            )
         return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
 
     @handle_mycqu_error

@@ -64,7 +64,7 @@ class MyTestCase(unittest.IsolatedAsyncioTestCase):
             ms_rr.FetchCourseTimetableRequest(
                 base_login_info=self.login_info,
                 code=self.sid,
-                session=ms_m.CquSession(year=2022, is_autumn=True)
+                session=ms_m.CquSession(year=2023, is_autumn=False)
             )
         )
         print(res)
