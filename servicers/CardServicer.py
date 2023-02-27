@@ -1,12 +1,12 @@
 import time
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 import micro_services_protobuf.mycqu_service.mycqu_service_pb2_grpc as ms_grpc
 import micro_services_protobuf.mycqu_service.mycqu_request_response_pb2 as ms_rr
 import micro_services_protobuf.mycqu_service.mycqu_model_pb2 as ms_m
 from httpx import AsyncClient
 
-from mycqu import Card, EnergyFees
+from mycqu import Card, EnergyFees, Bill
 from _321CQU.tools.protobufBridge import model2protobuf, model_list2protobuf
 
 from utils.ClientManager import CardClient
@@ -42,8 +42,20 @@ class CardServicer(ms_grpc.CardFetcherServicer):
     @handle_mycqu_error
     async def FetchBills(self, request: ms_rr.BaseLoginInfo, context):
         client = await self.get_logined_client(request)
-        info = await (await self.get_card(request.auth, client)).async_fetch_bills(client)
-        return model_list2protobuf(info, 'bills', ms_rr.FetchBillResponse)
+        info: List[Bill] = await (await self.get_card(request.auth, client)).async_fetch_bills(client)
+        result: List[ms_m.Bill] = []
+        for bill in info:
+            result.append(
+                ms_m.Bill(
+                    name=bill.name,
+                    date=int(bill.date.timestamp()),
+                    place=bill.place,
+                    tran_amount=bill.tran_amount,
+                    acc_amount=bill.acc_amount
+                )
+            )
+
+        return ms_rr.FetchBillResponse(bills=result)
 
     @handle_mycqu_error
     async def FetchEnergyFee(self, request: ms_rr.FetchEnergyFeeRequest, context):
