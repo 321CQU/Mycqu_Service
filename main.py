@@ -7,6 +7,7 @@ from _321CQU.tools.gRPCManager import gRPCManager, ServiceEnum
 
 from servicers.MycquServicer import MycquServicer
 from servicers.CardServicer import CardServicer
+from servicers.LibraryServicer import LibraryServicer
 
 
 async def serve():
@@ -15,6 +16,7 @@ async def serve():
     server = grpc.aio.server()
     ms_grpc.add_MycquFetcherServicer_to_server(MycquServicer(), server)
     ms_grpc.add_CardFetcherServicer_to_server(CardServicer(), server)
+    ms_grpc.add_LibraryFetcherServicer_to_server(LibraryServicer(), server)
     server.add_insecure_port('[::]:' + port)
     await server.start()
     await server.wait_for_termination()

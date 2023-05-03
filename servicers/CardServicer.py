@@ -7,7 +7,7 @@ import micro_services_protobuf.mycqu_service.mycqu_model_pb2 as ms_m
 from httpx import AsyncClient
 
 from mycqu import Card, EnergyFees, Bill
-from _321CQU.tools.protobufBridge import model2protobuf, model_list2protobuf
+from _321CQU.tools.protobufBridge import model2protobuf
 
 from utils.ClientManager import CardClient
 from utils.handleMycquError import handle_mycqu_error
