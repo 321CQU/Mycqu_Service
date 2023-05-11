@@ -55,7 +55,7 @@ class ClientManager:
         return await self.launch_new_client(description, id, login)
 
     async def launch_new_client(self, description: str, id: str, login: Callable[[AsyncClient], Awaitable]) -> AsyncClient:
-        client = AsyncClient(headers={'User-Agent': random.choice(USER_AGENT)}, timeout=20)
+        client = AsyncClient(headers={'User-Agent': random.choice(USER_AGENT)}, timeout=20, verify=False)
         await login(client)
         async with self.client_lock:
             if description not in self.clients.keys():
