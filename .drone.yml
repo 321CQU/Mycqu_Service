@@ -21,15 +21,17 @@ steps:
   commands:
     - git config --global http.proxy http://127.0.0.1:7890
     - git config --global https.proxy http://127.0.0.1:7890
-    - git clone https://github.com/ZhuLegend/321CQU_Mycqu_Service.git
-    - cd ./321CQU_Mycqu_Service/
+    - git clone https://github.com/321CQU/Mycqu_Service.git
+    - cd ./Mycqu_Service/
     - git checkout main
 
 - name: 新建镜像
   commands:
-    - cd ./321CQU_Mycqu_Service/
-    - docker-compose build
-    - docker-compose up -d
+    - source $${_321CQU_PUBLIC_REPOSITORY_PATH}/.env
+    - cd ./Mycqu_Service/
+    - docker build -t $${MYCQU_SERVICE_IMAGE} .
+    - cd $${_321CQU_PUBLIC_REPOSITORY_PATH}
+    - docker-compose up -d $${MYCQU_SERVICE_SERVER_NAME}
     - docker image prune -f
   depends_on:
     - clone
@@ -61,10 +63,16 @@ steps:
       message_color: true
       message_pic: true
       sha_link: true
-    when:
-      status:
-        - success
-        - failure
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
+    - merge
+  status:
+    - success
+    - failure
 
 depends_on:
   - 部署微服务-mycqu-微服务
