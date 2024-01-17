@@ -38,7 +38,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
         info = await EnrollCourseInfo.async_fetch(client, request.is_major)
         res = {}
         for key, value in info.items():
-            res[key] = {'info': [i.dict() for i in value]}
+            res[key] = {'info': [i.model_dump() for i in value]}
         return ParseDict({'result': res}, ms_rr.FetchEnrollCourseInfoResponse())
 
     @handle_mycqu_error
@@ -53,7 +53,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
         info = await Exam.async_fetch(client, request.stu_id)
         res = []
         for exam in info:
-            temp = exam.dict()
+            temp = exam.model_dump()
             temp['date'] = exam.date.isoformat()
             temp['start_time'] = exam.start_time.isoformat()
             temp['end_time'] = exam.end_time.isoformat()
@@ -71,7 +71,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
     async def FetchCurrSessionInfo(self, request: ms_rr.BaseLoginInfo, context):
         client = await self.get_logined_client(request)
         info = await CQUSessionInfo.async_fetch(client)
-        res = info.dict(exclude_none=True)
+        res = info.model_dump(exclude_none=True)
         if info.begin_date is not None:
             res['begin_date'] = _date2timestamp(info.begin_date)
         if info.end_date is not None:
@@ -84,7 +84,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
         info = await CQUSessionInfo.async_fetch_all(client)
         res = []
         for session_info in info:
-            temp = session_info.dict()
+            temp = session_info.model_dump()
             if session_info.begin_date is not None:
                 temp['begin_date'] = _date2timestamp(session_info.begin_date)
             if session_info.end_date is not None:
@@ -95,7 +95,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
     @handle_mycqu_error
     async def FetchCourseTimetable(self, request: ms_rr.FetchCourseTimetableRequest, context):
         client = await self.get_logined_client(request.base_login_info)
-        cqu_session = CQUSession.parse_obj(MessageToDict(
+        cqu_session = CQUSession.model_validate(MessageToDict(
             request.session, including_default_value_fields=True, preserving_proto_field_name=True
         ))
         if cqu_session.id == 0:
@@ -108,7 +108,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
     @handle_mycqu_error
     async def FetchEnrollTimetable(self, request: ms_rr.FetchEnrollTimetableRequest, context):
         client = await self.get_logined_client(request.base_login_info)
-        info = await CourseTimetable.async_fetch_enroll(client, request.code)
+        info = await CourseTimetable.async_fetch_enroll(client)
         return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
 
     @handle_mycqu_error
