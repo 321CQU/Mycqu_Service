@@ -76,6 +76,9 @@ class TencentSCF(metaclass=Singleton):
         return await self.client_pool.get()
 
     async def invoke_mycqu(self, data: Any):
-        return (await self.get_client()).invoke(self.mycqu_function_name, data=data)
+        client = await self.get_client()
+        res = client.invoke(self.mycqu_function_name, data=data)
+        await self.client_pool.put(client)
+        return res
 
 SCF = TencentSCF()
