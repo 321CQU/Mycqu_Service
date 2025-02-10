@@ -1,12 +1,10 @@
 from typing import List
 
-import micro_services_protobuf.mycqu_service.mycqu_service_pb2_grpc as ms_grpc
-import micro_services_protobuf.mycqu_service.mycqu_request_response_pb2 as ms_rr
 import micro_services_protobuf.mycqu_service.mycqu_model_pb2 as ms_m
+import micro_services_protobuf.mycqu_service.mycqu_request_response_pb2 as ms_rr
+import micro_services_protobuf.mycqu_service.mycqu_service_pb2_grpc as ms_grpc
 from httpx import AsyncClient
-
 from mycqu import BookInfo
-from _321CQU.tools.protobufBridge import model_list2protobuf
 
 from utils.ClientManager import LibraryClient
 from utils.handleMycquError import handle_mycqu_error
