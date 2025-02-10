@@ -30,7 +30,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
 
     @handle_mycqu_error
     async def FetchUser(self, request: ms_rr.BaseLoginInfo, context):
-        res = await SCF.invoke_mycqu({
+        res = SCF.invoke_mycqu({
             "username": request.auth,
             "password": request.password,
             "target": [
@@ -59,7 +59,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
 
     @handle_mycqu_error
     async def FetchExam(self, request: ms_rr.FetchExamRequest, context):
-        res = await SCF.invoke_mycqu({
+        res = SCF.invoke_mycqu({
             "username": request.base_login_info.auth,
             "password": request.base_login_info.password,
             "target": [
@@ -87,7 +87,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
 
     @handle_mycqu_error
     async def FetchCurrSessionInfo(self, request: ms_rr.BaseLoginInfo, context):
-        res = await SCF.invoke_mycqu({
+        res = SCF.invoke_mycqu({
             "username": request.auth,
             "password": request.password,
             "target": [
@@ -106,7 +106,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
 
     @handle_mycqu_error
     async def FetchAllSessionInfo(self, request: ms_rr.BaseLoginInfo, context):
-        res = await SCF.invoke_mycqu({
+        res = SCF.invoke_mycqu({
             "username": request.auth,
             "password": request.password,
             "target": [
@@ -133,7 +133,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
         ))
         if cqu_session.id == 0:
             cqu_session.id = None
-        res = await SCF.invoke_mycqu({
+        res = SCF.invoke_mycqu({
             "username": request.base_login_info.auth,
             "password": request.base_login_info.password,
             "target": [
@@ -155,7 +155,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
 
     @handle_mycqu_error
     async def FetchScore(self, request: ms_rr.FetchScoreRequest, context):
-        res = await SCF.invoke_mycqu({
+        res = SCF.invoke_mycqu({
             "username": request.base_login_info.auth,
             "password": request.base_login_info.password,
             "target": [
@@ -172,7 +172,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
 
     @handle_mycqu_error
     async def FetchGpaRanking(self, request: ms_rr.BaseLoginInfo, context):
-        res = await SCF.invoke_mycqu({
+        res = SCF.invoke_mycqu({
             "username": request.auth,
             "password": request.password,
             "target": [
