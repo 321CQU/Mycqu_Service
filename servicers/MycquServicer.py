@@ -13,7 +13,7 @@ from _321CQU.tools.protobufBridge import model2protobuf, model_list2protobuf
 
 from utils.ClientManager import MycquClient
 from utils.handleMycquError import handle_mycqu_error
-from utils.tencentSCF import SCF
+from utils.tencentSCF import SCF, handle_scf_error
 
 
 def _date2timestamp(_date: date) -> int:
@@ -28,7 +28,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
     async def get_logined_client(self, info: ms_rr.BaseLoginInfo) -> AsyncClient:
         return await self.client_manager.get_logined_client(info.auth, info.password)
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchUser(self, request: ms_rr.BaseLoginInfo, context):
         res = SCF.invoke_mycqu({
             "username": request.auth,
@@ -39,7 +39,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             ],
             "params": {}
         })
-        info = User.model_validate_json(res)
+        info = User.model_validate(res)
         return model2protobuf(info, ms_m.UserInfo)
 
     @handle_mycqu_error
@@ -57,7 +57,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
         info = await EnrollCourseItem.async_fetch(client, request.id, request.is_major)
         return model_list2protobuf(info, 'enroll_course_items', ms_rr.FetchEnrollCourseItemResponse)
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchExam(self, request: ms_rr.FetchExamRequest, context):
         res = SCF.invoke_mycqu({
             "username": request.base_login_info.auth,
@@ -68,7 +68,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             ],
             "params": {}
         })
-        info = [Exam.model_validate(i) for i in json.loads(res)]
+        info = [Exam.model_validate(i) for i in res]
         res = []
         for exam in info:
             temp = exam.model_dump()
@@ -85,7 +85,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
         info = await CQUSession.async_fetch(client)
         return model_list2protobuf(info, 'sessions', ms_rr.FetchAllSessionResponse)
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchCurrSessionInfo(self, request: ms_rr.BaseLoginInfo, context):
         res = SCF.invoke_mycqu({
             "username": request.auth,
@@ -96,7 +96,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             ],
             "params": {}
         })
-        info = CQUSessionInfo.model_validate_json(res)
+        info = CQUSessionInfo.model_validate(res)
         res = info.model_dump(exclude_none=True)
         if info.begin_date is not None:
             res['begin_date'] = _date2timestamp(info.begin_date)
@@ -104,7 +104,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             res['end_date'] = _date2timestamp(info.end_date)
         return ParseDict(res, ms_m.CquSessionInfo())
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchAllSessionInfo(self, request: ms_rr.BaseLoginInfo, context):
         res = SCF.invoke_mycqu({
             "username": request.auth,
@@ -115,7 +115,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             ],
             "params": {}
         })
-        info = [CQUSessionInfo.model_validate(i) for i in json.loads(res)]
+        info = [CQUSessionInfo.model_validate(i) for i in res]
         res = []
         for session_info in info:
             temp = session_info.model_dump()
@@ -126,7 +126,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             res.append(temp)
         return ParseDict({'session_infos': res}, ms_rr.FetchAllSessionInfoResponse())
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchCourseTimetable(self, request: ms_rr.FetchCourseTimetableRequest, context):
         cqu_session = CQUSession.model_validate(MessageToDict(
             request.session, including_default_value_fields=True, preserving_proto_field_name=True
@@ -144,7 +144,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
                 "cqu_session": cqu_session.model_dump(mode='json')
             }
         })
-        info = [CourseTimetable.model_validate(i) for i in json.loads(res)]
+        info = [CourseTimetable.model_validate(i) for i in res]
         return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
 
     @handle_mycqu_error
@@ -153,7 +153,7 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
         info = await CourseTimetable.async_fetch_enroll(client)
         return model_list2protobuf(info, 'course_timetables', ms_rr.FetchCourseTimetableResponse)
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchScore(self, request: ms_rr.FetchScoreRequest, context):
         res = SCF.invoke_mycqu({
             "username": request.base_login_info.auth,
@@ -166,11 +166,10 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
                 "is_minor": request.is_minor
             }
         })
-        scores: list[dict] = json.loads(res)
-        info = [Score.model_validate(i) for i in scores]
+        info = [Score.model_validate(i) for i in res]
         return model_list2protobuf(info, 'scores', ms_rr.FetchScoreResponse)
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchGpaRanking(self, request: ms_rr.BaseLoginInfo, context):
         res = SCF.invoke_mycqu({
             "username": request.auth,
@@ -181,5 +180,5 @@ class MycquServicer(ms_grpc.MycquFetcherServicer):
             ],
             "params": {}
         })
-        info = GpaRanking.model_validate_json(res)
+        info = GpaRanking.model_validate(res)
         return model2protobuf(info, ms_m.GpaRanking)
