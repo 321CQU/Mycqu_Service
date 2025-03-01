@@ -1,3 +1,4 @@
+import json
 import time
 from typing import Tuple, Dict, List
 
@@ -9,40 +10,44 @@ from httpx import AsyncClient
 from mycqu import Card, EnergyFees, Bill
 from _321CQU.tools.protobufBridge import model2protobuf
 
-from utils.ClientManager import CardClient
 from utils.handleMycquError import handle_mycqu_error
+from utils.tencentSCF import handle_scf_error, SCF
 
 
 class CardServicer(ms_grpc.CardFetcherServicer):
     def __init__(self):
         super().__init__()
-        self.client_manager = CardClient()
-        self.cards: Dict[str, Tuple[Card, int]] = {}
 
-    async def get_logined_client(self, info: ms_rr.BaseLoginInfo) -> AsyncClient:
-        return await self.client_manager.get_logined_client(info.auth, info.password)
-
-    @handle_mycqu_error
-    async def get_card(self, auth: str, client: AsyncClient) -> Card:
-        info = self.cards.get(auth)
-        now = time.time()
-        if info is not None and now - info[1] > 60 * 10:
-            return info[0]
-        else:
-            card = await Card.async_fetch(client)
-            self.cards[auth] = (card, int(now))
-            return card
-
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchCard(self, request: ms_rr.BaseLoginInfo, context):
-        client = await self.get_logined_client(request)
-        info = await self.get_card(request.auth, client)
+        res = SCF.invoke_mycqu({
+            "username": request.auth,
+            "password": request.password,
+            "target": [
+                "card",
+                "card"
+            ],
+            "params": {}
+        })
+        info = Card.model_validate(res)
         return model2protobuf(info, ms_m.Card)
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchBills(self, request: ms_rr.BaseLoginInfo, context):
-        client = await self.get_logined_client(request)
-        info: List[Bill] = await (await self.get_card(request.auth, client)).async_fetch_bills(client)
+        res = SCF.invoke_mycqu(
+            {
+                "username": request.auth,
+                "password": request.password,
+                "target": [
+                    "card",
+                    "bills"
+                ],
+                "params": {}
+            }
+        )
+
+        info = [Bill.model_validate(i) for i in res]
+
         result: List[ms_m.Bill] = []
         for bill in info:
             result.append(
@@ -57,8 +62,21 @@ class CardServicer(ms_grpc.CardFetcherServicer):
 
         return ms_rr.FetchBillResponse(bills=result)
 
-    @handle_mycqu_error
+    @handle_scf_error
     async def FetchEnergyFee(self, request: ms_rr.FetchEnergyFeeRequest, context):
-        client = await self.get_logined_client(request.base_login_info)
-        info = await EnergyFees.async_fetch(client, request.is_hu_xi, request.room)
+        res = SCF.invoke_mycqu(
+            {
+                "username": request.base_login_info.auth,
+                "password": request.base_login_info.password,
+                "target": [
+                    "card",
+                    "energy_fees"
+                ],
+                "params": {
+                    "is_huxi": request.is_hu_xi,
+                    "room": request.room
+                }
+            }
+        )
+        info = EnergyFees.model_validate(res)
         return model2protobuf(info, ms_m.EnergyFees)
