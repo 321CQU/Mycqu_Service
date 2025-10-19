@@ -45,7 +45,7 @@ COPY . .
 RUN cargo build --release
 
 # --- Runtime Stage ---
-FROM debian:buster-slim AS runtime
+FROM debian:trixie-slim AS runtime
 WORKDIR /app
 
 # Copy the built binary from the builder stage
