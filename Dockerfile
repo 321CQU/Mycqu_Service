@@ -46,6 +46,10 @@ RUN cargo build --release
 
 # --- Runtime Stage ---
 FROM debian:trixie-slim AS runtime
+
+# Install SSL root certificates required for making HTTPS requests
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy the built binary from the builder stage
