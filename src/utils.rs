@@ -51,7 +51,7 @@ impl ProxiedClientProvider {
         Self {
             cache: RwLock::default(),
             coalescer: RequestCoalescer::new(),
-            http_client: reqwest::Client::new(),
+            http_client: reqwest::Client::builder().no_proxy().build().unwrap(),
         }
     }
 
