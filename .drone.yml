@@ -17,31 +17,40 @@ clone:
   disable: true
 
 steps:
-- name: clone
-  commands:
-    - git config --global http.proxy http://127.0.0.1:7890
-    - git config --global https.proxy http://127.0.0.1:7890
-    - git clone https://github.com/321CQU/Mycqu_Service.git
-    - cd ./Mycqu_Service/
-    - git checkout main
+  - name: clone
+    commands:
+      - git config --global http.proxy http://127.0.0.1:7890
+      - git config --global https.proxy http://127.0.0.1:7890
+      - git clone https://github.com/321CQU/Mycqu_Service.git
+      - cd ./Mycqu_Service/
+      - git checkout main
 
-- name: 新建镜像
-  commands:
-    - source $${_321CQU_PUBLIC_REPOSITORY_PATH}/.env
-    - cd ./Mycqu_Service/
-    - docker build -t $${MYCQU_SERVICE_IMAGE} .
-    - cd $${_321CQU_PUBLIC_REPOSITORY_PATH}
-    - docker-compose up -d $${MYCQU_SERVICE_SERVER_NAME}
-    - docker image prune -f
-  depends_on:
-    - clone
+  - name: 新建镜像
+    commands:
+      - source $${_321CQU_PUBLIC_REPOSITORY_PATH}/.env
+      - cd ./Mycqu_Service/
+      - docker build -t $${MYCQU_SERVICE_IMAGE} .
+      - cd $${_321CQU_PUBLIC_REPOSITORY_PATH}
+      - docker-compose up -d $${MYCQU_SERVICE_SERVER_NAME}
+      - docker image prune -f
+    environment:
+      PROXY_PASSWORD:
+        from_secret: proxy_password
+      PROXY_USERNAME:
+        from_secret: proxy_username
+      PROXY_SECRET_ID:
+        from_secret: proxy_secret_id
+      PROXY_SIGNATURE:
+        from_secret: proxy_signature
+    depends_on:
+      - clone
 
 trigger:
   branch:
-  - main
+    - main
   event:
-  - push
-  - merge
+    - push
+    - merge
 
 ---
 kind: pipeline
