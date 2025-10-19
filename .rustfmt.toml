@@ -1,0 +1,6 @@
+edition = "2024"
+use_field_init_shorthand = true
+unstable_features = true
+
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
