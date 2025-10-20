@@ -194,7 +194,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     // --- gRPC 服务启动 ---
-    let addr = "[::1]:53211".parse()?;
+    let addr = "[::]:53211".parse()?;
 
     tracing::info!("gRPC server listening on {}", addr);
 
