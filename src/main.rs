@@ -11,6 +11,11 @@ use rsmycqu::{
 };
 use tokio::sync::RwLock;
 use tonic::{Status, transport::Server};
+use tower_http::trace::TraceLayer;
+use tracing::{Level, error, instrument};
+use tracing_subscriber::{
+    EnvFilter, Layer, filter, fmt, layer::SubscriberExt, util::SubscriberInitExt,
+};
 
 use crate::{
     card_service::CardService,
@@ -58,6 +63,7 @@ trait IntoStatus {
 }
 
 impl<E: RsMyCQUError> IntoStatus for ApiError<E> {
+    #[instrument]
     fn into_status(self) -> Status {
         match self {
             ApiError::NotLogin => Status::unauthenticated("登录失败，请检查用户名或密码"),
@@ -69,9 +75,18 @@ impl<E: RsMyCQUError> IntoStatus for ApiError<E> {
                 Status::internal("教务网响应解析失败，请稍后重试，长时间出现请联系管理员")
             }
             ApiError::Website { msg } => Status::unavailable(format!("教务网异常：{msg}")),
-            ApiError::Inner { .. } => Status::internal("内部异常，请联系管理员"),
-            ApiError::Whatever { .. } => Status::internal("内部异常，请联系管理员"),
-            ApiError::Session { .. } => Status::internal("内部异常，请联系管理员"),
+            ApiError::Inner { source } => {
+                error!(%source);
+                Status::internal("内部异常，请联系管理员")
+            }
+            ApiError::Whatever { source, message } => {
+                error!(?source, %message);
+                Status::internal("内部异常，请联系管理员")
+            }
+            ApiError::Session { source } => {
+                error!(%source);
+                Status::internal("内部异常，请联系管理员")
+            }
         }
     }
 }
@@ -154,9 +169,37 @@ static MISSING_LOGIN_INFO_STATUS: LazyLock<Status> =
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::]:53211".parse()?;
+    // --- 文件轮转和分级日志设置 ---
+    let app_file_appender = tracing_appender::rolling::daily("logs", "app.log");
+    let (non_blocking_app_writer, _app_guard) = tracing_appender::non_blocking(app_file_appender);
+
+    let error_file_appender = tracing_appender::rolling::daily("logs", "error.log");
+    let (non_blocking_error_writer, _error_guard) =
+        tracing_appender::non_blocking(error_file_appender);
+
+    let app_layer = fmt::layer()
+        .with_writer(non_blocking_app_writer)
+        .with_filter(filter::filter_fn(|meta| *meta.level() != Level::ERROR));
+
+    let error_layer = fmt::layer()
+        .with_writer(non_blocking_error_writer)
+        .with_filter(filter::LevelFilter::ERROR);
+
+    let env_filter = EnvFilter::from_default_env().add_directive(Level::INFO.into());
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(app_layer)
+        .with(error_layer)
+        .init();
+
+    // --- gRPC 服务启动 ---
+    let addr = "[::1]:50051".parse()?;
+
+    tracing::info!("gRPC server listening on {}", addr);
 
     Server::builder()
+        .layer(TraceLayer::new_for_grpc())
         .add_service(proto::mycqu_fetcher_server::MycquFetcherServer::new(
             MycquServicer::new(),
         ))
