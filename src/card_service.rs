@@ -9,6 +9,7 @@ use std::{
 use rsmycqu::session::Session;
 use tokio::sync::RwLock;
 use tonic::{Response, Status, async_trait};
+use tracing::instrument;
 
 use crate::{
     IntoStatus, MISSING_LOGIN_INFO_STATUS, Service, proto,
@@ -47,6 +48,7 @@ impl CardService {
         }
     }
 
+    #[instrument(skip(self))]
     async fn fetch_card_with_cached(
         &self,
         auth: String,
@@ -75,6 +77,7 @@ impl CardService {
 
 #[async_trait]
 impl proto::card_fetcher_server::CardFetcher for CardService {
+    #[instrument(skip(self))]
     async fn fetch_card(
         &self,
         request: tonic::Request<proto::BaseLoginInfo>,
@@ -88,6 +91,7 @@ impl proto::card_fetcher_server::CardFetcher for CardService {
         Ok(Response::new(card.into()))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_bills(
         &self,
         request: tonic::Request<proto::BaseLoginInfo>,
@@ -125,6 +129,8 @@ impl proto::card_fetcher_server::CardFetcher for CardService {
 
         Ok(Response::new(proto::FetchBillResponse { bills }))
     }
+
+    #[instrument(skip(self))]
     async fn fetch_energy_fee(
         &self,
         request: tonic::Request<proto::FetchEnergyFeeRequest>,

@@ -5,6 +5,7 @@ use std::{collections::HashMap, ops::Deref, sync::Arc, time::Duration};
 use rsmycqu::session::Session;
 use tokio::sync::RwLock;
 use tonic::{Request, Response, Status, async_trait};
+use tracing::instrument;
 
 use crate::{
     IntoStatus, MISSING_LOGIN_INFO_STATUS, Service, proto,
@@ -44,6 +45,7 @@ impl MycquServicer {
 
 #[async_trait]
 impl MycquFetcher for MycquServicer {
+    #[instrument(skip(self))]
     async fn fetch_user(
         &self,
         request: Request<proto::BaseLoginInfo>,
@@ -63,6 +65,7 @@ impl MycquFetcher for MycquServicer {
         Ok(Response::new(user.into()))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_enroll_course_info(
         &self,
         request: Request<proto::FetchEnrollCourseInfoRequest>,
@@ -102,6 +105,7 @@ impl MycquFetcher for MycquServicer {
         }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_enroll_course_item(
         &self,
         request: Request<proto::FetchEnrollCourseItemRequest>,
@@ -136,6 +140,7 @@ impl MycquFetcher for MycquServicer {
         }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_exam(
         &self,
         request: Request<proto::FetchExamRequest>,
@@ -166,6 +171,7 @@ impl MycquFetcher for MycquServicer {
         Ok(Response::new(proto::FetchExamResponse { exams }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_all_session(
         &self,
         request: Request<proto::BaseLoginInfo>,
@@ -190,6 +196,7 @@ impl MycquFetcher for MycquServicer {
         }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_curr_session_info(
         &self,
         request: Request<proto::BaseLoginInfo>,
@@ -225,6 +232,7 @@ impl MycquFetcher for MycquServicer {
         Ok(Response::new(detail.into()))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_all_session_info(
         &self,
         request: Request<proto::BaseLoginInfo>,
@@ -249,6 +257,7 @@ impl MycquFetcher for MycquServicer {
         }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_course_timetable(
         &self,
         request: Request<proto::FetchCourseTimetableRequest>,
@@ -285,6 +294,7 @@ impl MycquFetcher for MycquServicer {
         }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_enroll_timetable(
         &self,
         request: Request<proto::FetchEnrollTimetableRequest>,
@@ -317,6 +327,7 @@ impl MycquFetcher for MycquServicer {
         }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_score(
         &self,
         request: Request<proto::FetchScoreRequest>,
@@ -347,6 +358,7 @@ impl MycquFetcher for MycquServicer {
         Ok(Response::new(proto::FetchScoreResponse { scores }))
     }
 
+    #[instrument(skip(self))]
     async fn fetch_gpa_ranking(
         &self,
         request: Request<proto::BaseLoginInfo>,
