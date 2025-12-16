@@ -183,6 +183,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let error_layer = fmt::layer()
         .with_writer(non_blocking_error_writer)
+        .json()
+        .flatten_event(true)
+        .with_span_list(true)
         .with_filter(filter::LevelFilter::ERROR);
 
     let env_filter = EnvFilter::from_default_env().add_directive(Level::INFO.into());
