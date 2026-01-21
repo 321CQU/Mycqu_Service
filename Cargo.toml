@@ -12,7 +12,7 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "signal"] }
 chrono = { version = "0.4" }
 dashmap = "6.0"
 rand = "0.9"
-reqwest = "0.12"
+reqwest = { version = "0.13", features = ["json"] }
 serde = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "json"] }
