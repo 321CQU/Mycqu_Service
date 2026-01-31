@@ -129,18 +129,35 @@ impl ProxiedClientProvider {
     }
 
     pub async fn get_random_client(&self) -> Option<Arc<Client>> {
-        let needs_refresh = {
+        // 快速路径：先检查缓存是否有效，避免不必要的 coalescer 开销
+        let maybe_needs_refresh = {
             let cache = self.cache.read().await;
             Instant::now() >= cache.expires_at || cache.clients.is_empty()
         };
 
-        if needs_refresh
-            && let Err(e) = self
+        // 只有在可能需要刷新时才进入 coalescer
+        if maybe_needs_refresh {
+            let refresh_result = self
                 .coalescer
-                .execute("refresh_clients".to_string(), || self.refresh_clients())
-                .await
-        {
-            eprintln!("Failed to refresh proxied clients: {}", e);
+                .execute("refresh_clients".to_string(), || async {
+                    // 在 coalescer 内部再次检查是否需要刷新（双重检查）
+                    // 这样可以避免多个请求同时判断需要刷新后都触发 API 调用
+                    let needs_refresh = {
+                        let cache = self.cache.read().await;
+                        Instant::now() >= cache.expires_at || cache.clients.is_empty()
+                    };
+
+                    if needs_refresh {
+                        self.refresh_clients().await
+                    } else {
+                        Ok(())
+                    }
+                })
+                .await;
+
+            if let Err(e) = refresh_result {
+                eprintln!("Failed to refresh proxied clients: {}", e);
+            }
         }
 
         let cache = self.cache.read().await;
