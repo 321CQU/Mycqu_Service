@@ -16,8 +16,10 @@ reqwest = { version = "0.13", features = ["json"] }
 serde = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "json"] }
+tower = "0.5"
 tower-http = { version = "0.5", features = ["trace"] }
 tracing-appender = "0.2"
+prometheus = "0.13"
 
 [build-dependencies]
 tonic-prost-build = "*"

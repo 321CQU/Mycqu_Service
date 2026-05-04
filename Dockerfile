@@ -55,5 +55,5 @@ WORKDIR /app
 # Copy the built binary from the builder stage
 COPY --from=builder /app/target/release/mycqu_service /usr/local/bin/mycqu_service
 
-EXPOSE 53211
+EXPOSE 53211 93211
 CMD ["/usr/local/bin/mycqu_service"]
