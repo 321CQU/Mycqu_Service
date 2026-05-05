@@ -1,4 +1,5 @@
 use std::{
+    net::SocketAddr,
     ops::Deref,
     sync::{Arc, LazyLock},
     time::Duration,
@@ -23,6 +24,8 @@ use crate::{
     mycqu_service::MycquServicer,
     utils::{CachedCoalescer, PROXIED_CLIENT_PROVIDER, PROXY_CLIENT_GET_ERROR},
 };
+
+mod metrics;
 
 mod mycqu_service;
 
@@ -198,10 +201,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // --- gRPC 服务启动 ---
     let addr = "[::]:53211".parse()?;
+    let metrics_addr = std::env::var("METRICS_ADDR")
+        .unwrap_or_else(|_| "0.0.0.0:93211".to_string())
+        .parse::<SocketAddr>()?;
 
     tracing::info!("gRPC server listening on {}", addr);
+    tokio::spawn(async move {
+        if let Err(error) = metrics::serve_metrics(metrics_addr).await {
+            tracing::error!(%error, "metrics server stopped");
+        }
+    });
 
     Server::builder()
+        .layer(metrics::MetricsLayer)
         .layer(TraceLayer::new_for_grpc())
         .add_service(proto::mycqu_fetcher_server::MycquFetcherServer::new(
             MycquServicer::new(),
