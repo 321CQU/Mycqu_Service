@@ -202,7 +202,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // --- gRPC 服务启动 ---
     let addr = "[::]:53211".parse()?;
     let metrics_addr = std::env::var("METRICS_ADDR")
-        .unwrap_or_else(|_| "0.0.0.0:93211".to_string())
+        .unwrap_or_else(|_| "0.0.0.0:9321".to_string())
         .parse::<SocketAddr>()?;
 
     tracing::info!("gRPC server listening on {}", addr);
