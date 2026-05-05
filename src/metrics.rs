@@ -200,3 +200,145 @@ fn reason_phrase(status: u16) -> &'static str {
         _ => "Internal Server Error",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        convert::Infallible,
+        future::{Ready, ready},
+    };
+
+    use super::*;
+
+    #[derive(Clone)]
+    struct FixedResponseService {
+        http_status: http::StatusCode,
+        grpc_status: Option<&'static str>,
+    }
+
+    impl Service<http::Request<Body>> for FixedResponseService {
+        type Response = http::Response<()>;
+        type Error = Infallible;
+        type Future = Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, _request: http::Request<Body>) -> Self::Future {
+            let mut builder = http::Response::builder().status(self.http_status);
+            if let Some(status) = self.grpc_status {
+                builder = builder.header("grpc-status", status);
+            }
+            ready(Ok(builder.body(()).expect("build test response")))
+        }
+    }
+
+    #[test]
+    fn labels_known_rpc_paths() {
+        assert_eq!(
+            label_rpc_path("/mycqu_service.MycquFetcher/FetchScore"),
+            ("mycqu_service.MycquFetcher", "FetchScore")
+        );
+        assert_eq!(
+            label_rpc_path("/mycqu_service.CardFetcher/FetchBills"),
+            ("mycqu_service.CardFetcher", "FetchBills")
+        );
+        assert_eq!(
+            label_rpc_path("/mycqu_service.LibraryFetcher/RenewBook"),
+            ("mycqu_service.LibraryFetcher", "RenewBook")
+        );
+    }
+
+    #[test]
+    fn buckets_unknown_rpc_paths_to_fixed_labels() {
+        assert_eq!(
+            label_rpc_path("/random.Service/Method"),
+            ("unknown", "unknown")
+        );
+        assert_eq!(
+            label_rpc_path("/mycqu_service.MycquFetcher/NewMethod"),
+            ("unknown", "unknown")
+        );
+        assert_eq!(label_rpc_path("malformed"), ("unknown", "unknown"));
+    }
+
+    #[test]
+    fn extracts_grpc_status_from_response_headers() {
+        let response = http::Response::builder()
+            .status(http::StatusCode::OK)
+            .header("grpc-status", "7")
+            .body(())
+            .expect("build test response");
+
+        assert_eq!(grpc_status(&response), Some("7".to_string()));
+    }
+
+    #[test]
+    fn falls_back_to_http_status_when_grpc_status_is_absent() {
+        let ok_response = http::Response::builder()
+            .status(http::StatusCode::OK)
+            .body(())
+            .expect("build test response");
+        let unavailable_response = http::Response::builder()
+            .status(http::StatusCode::SERVICE_UNAVAILABLE)
+            .body(())
+            .expect("build test response");
+
+        assert_eq!(grpc_status(&ok_response), Some("0".to_string()));
+        assert_eq!(grpc_status(&unavailable_response), Some("503".to_string()));
+    }
+
+    #[test]
+    fn parses_http_request_path_for_metrics_endpoint() {
+        let request = b"GET /metrics HTTP/1.1\r\nHost: localhost\r\n\r\n";
+
+        assert_eq!(request_path(request), Some("/metrics".to_string()));
+    }
+
+    #[tokio::test]
+    async fn metrics_layer_records_known_rpc_request() {
+        let service = FixedResponseService {
+            http_status: http::StatusCode::OK,
+            grpc_status: Some("0"),
+        };
+        let mut service = MetricsLayer.layer(service);
+        let labels = &["mycqu_service.MycquFetcher", "FetchScore", "0"];
+        let before = GRPC_SERVER_REQUESTS.with_label_values(labels).get();
+        let request = http::Request::builder()
+            .uri("/mycqu_service.MycquFetcher/FetchScore")
+            .body(Body::empty())
+            .expect("build test request");
+
+        let response = service.call(request).await.expect("service call succeeds");
+
+        assert_eq!(response.status(), http::StatusCode::OK);
+        assert_eq!(
+            GRPC_SERVER_REQUESTS.with_label_values(labels).get(),
+            before + 1
+        );
+    }
+
+    #[tokio::test]
+    async fn metrics_layer_buckets_unknown_rpc_request() {
+        let service = FixedResponseService {
+            http_status: http::StatusCode::NOT_FOUND,
+            grpc_status: None,
+        };
+        let mut service = MetricsLayer.layer(service);
+        let labels = &["unknown", "unknown", "404"];
+        let before = GRPC_SERVER_REQUESTS.with_label_values(labels).get();
+        let request = http::Request::builder()
+            .uri("/not.AService/Nope")
+            .body(Body::empty())
+            .expect("build test request");
+
+        let response = service.call(request).await.expect("service call succeeds");
+
+        assert_eq!(response.status(), http::StatusCode::NOT_FOUND);
+        assert_eq!(
+            GRPC_SERVER_REQUESTS.with_label_values(labels).get(),
+            before + 1
+        );
+    }
+}
