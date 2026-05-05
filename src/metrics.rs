@@ -36,6 +36,25 @@ static GRPC_SERVER_REQUESTS: LazyLock<IntCounterVec> = LazyLock::new(|| {
     .expect("register grpc server request metric")
 });
 
+const KNOWN_RPCS: &[(&str, &str)] = &[
+    ("mycqu_service.MycquFetcher", "FetchUser"),
+    ("mycqu_service.MycquFetcher", "FetchEnrollCourseInfo"),
+    ("mycqu_service.MycquFetcher", "FetchEnrollCourseItem"),
+    ("mycqu_service.MycquFetcher", "FetchExam"),
+    ("mycqu_service.MycquFetcher", "FetchAllSession"),
+    ("mycqu_service.MycquFetcher", "FetchCurrSessionInfo"),
+    ("mycqu_service.MycquFetcher", "FetchAllSessionInfo"),
+    ("mycqu_service.MycquFetcher", "FetchCourseTimetable"),
+    ("mycqu_service.MycquFetcher", "FetchEnrollTimetable"),
+    ("mycqu_service.MycquFetcher", "FetchScore"),
+    ("mycqu_service.MycquFetcher", "FetchGpaRanking"),
+    ("mycqu_service.CardFetcher", "FetchCard"),
+    ("mycqu_service.CardFetcher", "FetchBills"),
+    ("mycqu_service.CardFetcher", "FetchEnergyFee"),
+    ("mycqu_service.LibraryFetcher", "FetchBorrowBook"),
+    ("mycqu_service.LibraryFetcher", "RenewBook"),
+];
+
 #[derive(Clone)]
 pub struct MetricsLayer;
 
@@ -93,57 +112,15 @@ where
 }
 
 fn label_rpc_path(path: &str) -> (&'static str, &'static str) {
-    match path.trim_matches('/').rsplit_once('/') {
-        Some(("mycqu_service.MycquFetcher", "FetchUser")) => {
-            ("mycqu_service.MycquFetcher", "FetchUser")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchEnrollCourseInfo")) => {
-            ("mycqu_service.MycquFetcher", "FetchEnrollCourseInfo")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchEnrollCourseItem")) => {
-            ("mycqu_service.MycquFetcher", "FetchEnrollCourseItem")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchExam")) => {
-            ("mycqu_service.MycquFetcher", "FetchExam")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchAllSession")) => {
-            ("mycqu_service.MycquFetcher", "FetchAllSession")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchCurrSessionInfo")) => {
-            ("mycqu_service.MycquFetcher", "FetchCurrSessionInfo")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchAllSessionInfo")) => {
-            ("mycqu_service.MycquFetcher", "FetchAllSessionInfo")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchCourseTimetable")) => {
-            ("mycqu_service.MycquFetcher", "FetchCourseTimetable")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchEnrollTimetable")) => {
-            ("mycqu_service.MycquFetcher", "FetchEnrollTimetable")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchScore")) => {
-            ("mycqu_service.MycquFetcher", "FetchScore")
-        }
-        Some(("mycqu_service.MycquFetcher", "FetchGpaRanking")) => {
-            ("mycqu_service.MycquFetcher", "FetchGpaRanking")
-        }
-        Some(("mycqu_service.CardFetcher", "FetchCard")) => {
-            ("mycqu_service.CardFetcher", "FetchCard")
-        }
-        Some(("mycqu_service.CardFetcher", "FetchBills")) => {
-            ("mycqu_service.CardFetcher", "FetchBills")
-        }
-        Some(("mycqu_service.CardFetcher", "FetchEnergyFee")) => {
-            ("mycqu_service.CardFetcher", "FetchEnergyFee")
-        }
-        Some(("mycqu_service.LibraryFetcher", "FetchBorrowBook")) => {
-            ("mycqu_service.LibraryFetcher", "FetchBorrowBook")
-        }
-        Some(("mycqu_service.LibraryFetcher", "RenewBook")) => {
-            ("mycqu_service.LibraryFetcher", "RenewBook")
-        }
-        _ => ("unknown", "unknown"),
-    }
+    let Some((service, method)) = path.trim_matches('/').rsplit_once('/') else {
+        return ("unknown", "unknown");
+    };
+
+    KNOWN_RPCS
+        .iter()
+        .copied()
+        .find(|known| *known == (service, method))
+        .unwrap_or(("unknown", "unknown"))
 }
 
 fn grpc_status<ResponseBody>(response: &http::Response<ResponseBody>) -> Option<String> {
