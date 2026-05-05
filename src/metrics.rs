@@ -68,7 +68,7 @@ where
 
     fn call(&mut self, request: http::Request<Body>) -> Self::Future {
         let path = request.uri().path().to_string();
-        let (service, method) = split_rpc_path(&path);
+        let (service, method) = label_rpc_path(&path);
         let started_at = Instant::now();
         let future = self.inner.call(request);
 
@@ -92,11 +92,58 @@ where
     }
 }
 
-fn split_rpc_path(path: &str) -> (String, String) {
-    path.trim_matches('/')
-        .rsplit_once('/')
-        .map(|(service, method)| (service.to_string(), method.to_string()))
-        .unwrap_or_else(|| ("unknown".to_string(), path.trim_matches('/').to_string()))
+fn label_rpc_path(path: &str) -> (&'static str, &'static str) {
+    match path.trim_matches('/').rsplit_once('/') {
+        Some(("mycqu_service.MycquFetcher", "FetchUser")) => {
+            ("mycqu_service.MycquFetcher", "FetchUser")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchEnrollCourseInfo")) => {
+            ("mycqu_service.MycquFetcher", "FetchEnrollCourseInfo")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchEnrollCourseItem")) => {
+            ("mycqu_service.MycquFetcher", "FetchEnrollCourseItem")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchExam")) => {
+            ("mycqu_service.MycquFetcher", "FetchExam")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchAllSession")) => {
+            ("mycqu_service.MycquFetcher", "FetchAllSession")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchCurrSessionInfo")) => {
+            ("mycqu_service.MycquFetcher", "FetchCurrSessionInfo")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchAllSessionInfo")) => {
+            ("mycqu_service.MycquFetcher", "FetchAllSessionInfo")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchCourseTimetable")) => {
+            ("mycqu_service.MycquFetcher", "FetchCourseTimetable")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchEnrollTimetable")) => {
+            ("mycqu_service.MycquFetcher", "FetchEnrollTimetable")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchScore")) => {
+            ("mycqu_service.MycquFetcher", "FetchScore")
+        }
+        Some(("mycqu_service.MycquFetcher", "FetchGpaRanking")) => {
+            ("mycqu_service.MycquFetcher", "FetchGpaRanking")
+        }
+        Some(("mycqu_service.CardFetcher", "FetchCard")) => {
+            ("mycqu_service.CardFetcher", "FetchCard")
+        }
+        Some(("mycqu_service.CardFetcher", "FetchBills")) => {
+            ("mycqu_service.CardFetcher", "FetchBills")
+        }
+        Some(("mycqu_service.CardFetcher", "FetchEnergyFee")) => {
+            ("mycqu_service.CardFetcher", "FetchEnergyFee")
+        }
+        Some(("mycqu_service.LibraryFetcher", "FetchBorrowBook")) => {
+            ("mycqu_service.LibraryFetcher", "FetchBorrowBook")
+        }
+        Some(("mycqu_service.LibraryFetcher", "RenewBook")) => {
+            ("mycqu_service.LibraryFetcher", "RenewBook")
+        }
+        _ => ("unknown", "unknown"),
+    }
 }
 
 fn grpc_status<ResponseBody>(response: &http::Response<ResponseBody>) -> Option<String> {
