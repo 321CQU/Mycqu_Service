@@ -15,7 +15,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpListener,
 };
-use tonic::{body::Body, codegen::http};
+use tonic::{Code, body::Body, codegen::http};
 use tower::{Layer, Service};
 
 static GRPC_SERVER_DURATION: LazyLock<HistogramVec> = LazyLock::new(|| {
@@ -128,14 +128,55 @@ fn grpc_status<ResponseBody>(response: &http::Response<ResponseBody>) -> Option<
         .headers()
         .get("grpc-status")
         .and_then(|status| status.to_str().ok())
-        .map(ToString::to_string)
+        .map(grpc_status_label)
         .or_else(|| {
             if response.status().is_success() {
-                Some("0".to_string())
+                Some(grpc_code_label(Code::Ok).to_string())
             } else {
-                Some(response.status().as_u16().to_string())
+                Some(http_status_label(response.status()).to_string())
             }
         })
+}
+
+fn grpc_status_label(status: &str) -> String {
+    grpc_code_label(Code::from_bytes(status.as_bytes())).to_string()
+}
+
+fn grpc_code_label(code: Code) -> &'static str {
+    match code {
+        Code::Ok => "OK",
+        Code::Cancelled => "CANCELLED",
+        Code::Unknown => "UNKNOWN",
+        Code::InvalidArgument => "INVALID_ARGUMENT",
+        Code::DeadlineExceeded => "DEADLINE_EXCEEDED",
+        Code::NotFound => "NOT_FOUND",
+        Code::AlreadyExists => "ALREADY_EXISTS",
+        Code::PermissionDenied => "PERMISSION_DENIED",
+        Code::ResourceExhausted => "RESOURCE_EXHAUSTED",
+        Code::FailedPrecondition => "FAILED_PRECONDITION",
+        Code::Aborted => "ABORTED",
+        Code::OutOfRange => "OUT_OF_RANGE",
+        Code::Unimplemented => "UNIMPLEMENTED",
+        Code::Internal => "INTERNAL",
+        Code::Unavailable => "UNAVAILABLE",
+        Code::DataLoss => "DATA_LOSS",
+        Code::Unauthenticated => "UNAUTHENTICATED",
+    }
+}
+
+fn http_status_label(status: http::StatusCode) -> &'static str {
+    match status {
+        http::StatusCode::BAD_REQUEST => "INVALID_ARGUMENT",
+        http::StatusCode::UNAUTHORIZED => "UNAUTHENTICATED",
+        http::StatusCode::FORBIDDEN => "PERMISSION_DENIED",
+        http::StatusCode::NOT_FOUND => "NOT_FOUND",
+        http::StatusCode::CONFLICT => "ABORTED",
+        http::StatusCode::TOO_MANY_REQUESTS => "RESOURCE_EXHAUSTED",
+        http::StatusCode::SERVICE_UNAVAILABLE => "UNAVAILABLE",
+        http::StatusCode::GATEWAY_TIMEOUT => "DEADLINE_EXCEEDED",
+        status if status.is_server_error() => "INTERNAL",
+        _ => "UNKNOWN",
+    }
 }
 
 pub async fn serve_metrics(addr: SocketAddr) -> std::io::Result<()> {
@@ -271,7 +312,10 @@ mod tests {
             .body(())
             .expect("build test response");
 
-        assert_eq!(grpc_status(&response), Some("7".to_string()));
+        assert_eq!(
+            grpc_status(&response),
+            Some("PERMISSION_DENIED".to_string())
+        );
     }
 
     #[test]
@@ -285,8 +329,11 @@ mod tests {
             .body(())
             .expect("build test response");
 
-        assert_eq!(grpc_status(&ok_response), Some("0".to_string()));
-        assert_eq!(grpc_status(&unavailable_response), Some("503".to_string()));
+        assert_eq!(grpc_status(&ok_response), Some("OK".to_string()));
+        assert_eq!(
+            grpc_status(&unavailable_response),
+            Some("UNAVAILABLE".to_string())
+        );
     }
 
     #[test]
@@ -303,7 +350,7 @@ mod tests {
             grpc_status: Some("0"),
         };
         let mut service = MetricsLayer.layer(service);
-        let labels = &["mycqu_service.MycquFetcher", "FetchScore", "0"];
+        let labels = &["mycqu_service.MycquFetcher", "FetchScore", "OK"];
         let before = GRPC_SERVER_REQUESTS.with_label_values(labels).get();
         let request = http::Request::builder()
             .uri("/mycqu_service.MycquFetcher/FetchScore")
@@ -326,7 +373,7 @@ mod tests {
             grpc_status: None,
         };
         let mut service = MetricsLayer.layer(service);
-        let labels = &["unknown", "unknown", "404"];
+        let labels = &["unknown", "unknown", "NOT_FOUND"];
         let before = GRPC_SERVER_REQUESTS.with_label_values(labels).get();
         let request = http::Request::builder()
             .uri("/not.AService/Nope")
