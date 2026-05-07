@@ -14,6 +14,7 @@ use tokio::{
     time::interval,
 };
 use tonic::Status;
+use tracing::{error, warn};
 // --- Proxied Client Provider ---
 
 #[derive(Deserialize, Debug)]
@@ -28,6 +29,7 @@ struct ProxyApiData {
 
 struct ClientCache {
     clients: Vec<Arc<Client>>,
+    refresh_at: Instant,
     expires_at: Instant,
 }
 
@@ -35,6 +37,7 @@ impl Default for ClientCache {
     fn default() -> Self {
         Self {
             clients: Vec::new(),
+            refresh_at: Instant::now(),
             expires_at: Instant::now(),
         }
     }
@@ -119,11 +122,17 @@ impl ProxiedClientProvider {
             return Err("Failed to parse any valid proxies from API response".to_string());
         }
 
-        // 3. Update cache
-        let ttl = Duration::from_secs(min_expire.saturating_sub(10).max(10));
+        // 3. Update cache. Refresh before real expiry, but keep the old client usable
+        // until the proxy provider says it has actually expired.
+        const REFRESH_SAFETY_MARGIN_SECS: u64 = 30;
+        let now = Instant::now();
+        let refresh_after =
+            Duration::from_secs(min_expire.saturating_sub(REFRESH_SAFETY_MARGIN_SECS).max(1));
+        let expires_after = Duration::from_secs(min_expire);
         let mut cache_writer = self.cache.write().await;
         cache_writer.clients = new_clients;
-        cache_writer.expires_at = Instant::now() + ttl;
+        cache_writer.refresh_at = now + refresh_after;
+        cache_writer.expires_at = now + expires_after;
 
         Ok(())
     }
@@ -132,7 +141,7 @@ impl ProxiedClientProvider {
         // 快速路径：先检查缓存是否有效，避免不必要的 coalescer 开销
         let maybe_needs_refresh = {
             let cache = self.cache.read().await;
-            Instant::now() >= cache.expires_at || cache.clients.is_empty()
+            Instant::now() >= cache.refresh_at || cache.clients.is_empty()
         };
 
         // 只有在可能需要刷新时才进入 coalescer
@@ -144,7 +153,7 @@ impl ProxiedClientProvider {
                     // 这样可以避免多个请求同时判断需要刷新后都触发 API 调用
                     let needs_refresh = {
                         let cache = self.cache.read().await;
-                        Instant::now() >= cache.expires_at || cache.clients.is_empty()
+                        Instant::now() >= cache.refresh_at || cache.clients.is_empty()
                     };
 
                     if needs_refresh {
@@ -156,11 +165,20 @@ impl ProxiedClientProvider {
                 .await;
 
             if let Err(e) = refresh_result {
-                eprintln!("Failed to refresh proxied clients: {}", e);
+                warn!(error = %e, "failed to refresh proxied clients");
             }
         }
 
         let cache = self.cache.read().await;
+        if cache.clients.is_empty() {
+            error!("proxied client cache is empty");
+            return None;
+        }
+        if Instant::now() >= cache.expires_at {
+            error!("proxied client cache expired");
+            return None;
+        }
+
         cache.clients.choose(&mut rand::rng()).cloned()
     }
 }
@@ -169,7 +187,7 @@ pub static PROXIED_CLIENT_PROVIDER: LazyLock<ProxiedClientProvider> =
     LazyLock::new(ProxiedClientProvider::new);
 
 pub static PROXY_CLIENT_GET_ERROR: LazyLock<Status> =
-    LazyLock::new(|| Status::internal("Failed to get proxied client"));
+    LazyLock::new(|| Status::unavailable("代理客户端不可用，请稍后重试"));
 
 // --- Generic Caching & Coalescing Utilities ---
 
