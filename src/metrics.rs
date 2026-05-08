@@ -100,10 +100,10 @@ where
                 .unwrap_or_else(|| "unknown".to_string());
 
             GRPC_SERVER_DURATION
-                .with_label_values(&[&service, &method, &status_code])
+                .with_label_values(&[service, method, status_code.as_str()])
                 .observe(started_at.elapsed().as_secs_f64());
             GRPC_SERVER_REQUESTS
-                .with_label_values(&[&service, &method, &status_code])
+                .with_label_values(&[service, method, status_code.as_str()])
                 .inc();
 
             response
