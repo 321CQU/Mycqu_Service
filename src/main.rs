@@ -14,6 +14,7 @@ use tokio::sync::RwLock;
 use tonic::{Status, transport::Server};
 use tower_http::trace::TraceLayer;
 use tracing::{Level, error, instrument};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{
     EnvFilter, Layer, filter, fmt, layer::SubscriberExt, util::SubscriberInitExt,
 };
@@ -171,13 +172,19 @@ trait Service {
 static MISSING_LOGIN_INFO_STATUS: LazyLock<Status> =
     LazyLock::new(|| Status::invalid_argument("缺失登录信息"));
 
+const LOG_DIR: &str = "logs";
+const APP_LOG_PREFIX: &str = "app.log";
+const ERROR_LOG_PREFIX: &str = "error.log";
+const DEFAULT_LOG_RETENTION_DAYS: usize = 30;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // --- 文件轮转和分级日志设置 ---
-    let app_file_appender = tracing_appender::rolling::daily("logs", "app.log");
+    let log_retention_days = log_retention_days();
+    let app_file_appender = daily_log_appender(APP_LOG_PREFIX, log_retention_days)?;
     let (non_blocking_app_writer, _app_guard) = tracing_appender::non_blocking(app_file_appender);
 
-    let error_file_appender = tracing_appender::rolling::daily("logs", "error.log");
+    let error_file_appender = daily_log_appender(ERROR_LOG_PREFIX, log_retention_days)?;
     let (non_blocking_error_writer, _error_guard) =
         tracing_appender::non_blocking(error_file_appender);
 
@@ -229,4 +236,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     Ok(())
+}
+
+fn daily_log_appender(
+    prefix: &'static str,
+    retention_days: usize,
+) -> Result<RollingFileAppender, tracing_appender::rolling::InitError> {
+    RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix(prefix)
+        .max_log_files(max_log_files_for_retention_days(retention_days))
+        .build(LOG_DIR)
+}
+
+fn log_retention_days() -> usize {
+    std::env::var("LOG_RETENTION_DAYS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(DEFAULT_LOG_RETENTION_DAYS)
+}
+
+fn max_log_files_for_retention_days(retention_days: usize) -> usize {
+    retention_days.saturating_add(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keeps_current_log_file_in_retention_count() {
+        assert_eq!(max_log_files_for_retention_days(0), 1);
+        assert_eq!(max_log_files_for_retention_days(30), 31);
+        assert_eq!(max_log_files_for_retention_days(usize::MAX), usize::MAX);
+    }
 }
