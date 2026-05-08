@@ -4,22 +4,22 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rsmycqu = { version = "0.2.2", features = ["card"] }
+rsmycqu = { version = "0.3.0", features = ["card"] }
 tonic = "*"
 prost = "0.14"
 tonic-prost = "*"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "signal"] }
 chrono = { version = "0.4" }
 dashmap = "6.0"
-rand = "0.9"
+rand = "0.10"
 reqwest = { version = "0.13", features = ["json"] }
 serde = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter", "json"] }
 tower = "0.5"
-tower-http = { version = "0.5", features = ["trace"] }
+tower-http = { version = "0.6", features = ["trace"] }
 tracing-appender = "0.2"
-prometheus = "0.13"
+prometheus = "0.14"
 
 [build-dependencies]
 tonic-prost-build = "*"
