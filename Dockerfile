@@ -15,12 +15,12 @@ RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ trixie main contrib n
 RUN apt-get update && apt-get install -y protobuf-compiler
 
 # Configure cargo to use Tsinghua mirror
-RUN mkdir -p /root/.cargo && \
-    echo '[source.crates-io]' > /root/.cargo/config.toml && \
-    echo 'replace-with = "tuna"' >> /root/.cargo/config.toml && \
-    echo '' >> /root/.cargo/config.toml && \
-    echo '[source.tuna]' >> /root/.cargo/config.toml && \
-    echo 'registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"' >> /root/.cargo/config.toml
+RUN mkdir -p "${CARGO_HOME}" && \
+    echo '[source.crates-io]' > "${CARGO_HOME}/config.toml" && \
+    echo 'replace-with = "tuna"' >> "${CARGO_HOME}/config.toml" && \
+    echo '' >> "${CARGO_HOME}/config.toml" && \
+    echo '[source.tuna]' >> "${CARGO_HOME}/config.toml" && \
+    echo 'registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"' >> "${CARGO_HOME}/config.toml"
 
 WORKDIR /app
 
