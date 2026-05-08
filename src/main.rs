@@ -74,7 +74,8 @@ impl<E: RsMyCQUError> IntoStatus for ApiError<E> {
             ApiError::Request { .. } => {
                 Status::internal("教务网请求发送失败，请稍后重试，长时间出现请联系管理员员")
             }
-            ApiError::ModelParse { .. } => {
+            ApiError::ModelParse { msg, raw_response } => {
+                error!(%msg, %raw_response, "教务网响应解析失败");
                 Status::internal("教务网响应解析失败，请稍后重试，长时间出现请联系管理员")
             }
             ApiError::Website { msg } => Status::unavailable(format!("教务网异常：{msg}")),
