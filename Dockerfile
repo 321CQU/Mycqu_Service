@@ -1,9 +1,11 @@
+# syntax=docker/dockerfile:1.7
+
 # We use the cargo-chef image for the builder stages to avoid manual installation
 
 # --- Base Dependencies Stage ---
 # This stage installs common dependencies to be reused by other stages,
 # and configures mirrors to speed up package downloads.
-FROM lukemathwalker/cargo-chef:latest-rust-1.90 AS base-deps
+FROM docker.1ms.run/lukemathwalker/cargo-chef:latest-rust-1.95 AS base-deps
 
 # Configure apt to use Tsinghua mirror for Debian Buster
 RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ trixie main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
@@ -38,11 +40,18 @@ FROM base-deps AS builder
 
 # Copy the recipe from the chef stage and cook the dependencies.
 COPY --from=chef /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN --mount=type=cache,id=mycqu-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=mycqu-cargo-git,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=mycqu-target,target=/app/target,sharing=locked \
+    cargo chef cook --release --recipe-path recipe.json
 
 # Now, copy the application source code and build it.
 COPY . .
-RUN cargo build --release
+RUN --mount=type=cache,id=mycqu-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=mycqu-cargo-git,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=mycqu-target,target=/app/target,sharing=locked \
+    cargo build --release && \
+    cp /app/target/release/mycqu_service /usr/local/bin/mycqu_service
 
 # --- Runtime Stage ---
 FROM debian:trixie-slim AS runtime
@@ -53,7 +62,7 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 WORKDIR /app
 
 # Copy the built binary from the builder stage
-COPY --from=builder /app/target/release/mycqu_service /usr/local/bin/mycqu_service
+COPY --from=builder /usr/local/bin/mycqu_service /usr/local/bin/mycqu_service
 
 EXPOSE 53211 9321
 CMD ["/usr/local/bin/mycqu_service"]
