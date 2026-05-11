@@ -29,7 +29,7 @@ steps:
     commands:
       - source $${_321CQU_PUBLIC_REPOSITORY_PATH}/.env
       - cd ./Mycqu_Service/
-      - docker build -t $${MYCQU_SERVICE_IMAGE} .
+      - DOCKER_BUILDKIT=1 docker build --progress=plain -t $${MYCQU_SERVICE_IMAGE} .
       - cd $${_321CQU_PUBLIC_REPOSITORY_PATH}
       - docker-compose up -d $${MYCQU_SERVICE_SERVER_NAME}
       - docker image prune -f
@@ -85,4 +85,3 @@ trigger:
 
 depends_on:
   - 部署微服务-mycqu-微服务
-

@@ -1,0 +1,10 @@
+.git
+.gitignore
+.dockerignore
+target
+debug
+logs
+*.log
+.DS_Store
+.idea
+.vscode
