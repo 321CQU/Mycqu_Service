@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rsmycqu = { version = "0.4.1", features = ["card"] }
+rsmycqu = { version = "0.4", features = ["card"] }
 tonic = "*"
 prost = "0.14"
 tonic-prost = "*"
