@@ -1874,9 +1874,9 @@ dependencies = [
 
 [[package]]
 name = "rsmycqu"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23ae81afb02ac1f57eff70023b33b1fe633f0a585d8ad832658b48d4ea62622e"
+checksum = "8f37b3527be4629bc03c4ecadd72ccf5b25a8df72e14788e7bc1fe0e4d8bb266"
 dependencies = [
  "aes",
  "base64",
